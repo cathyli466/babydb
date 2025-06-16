@@ -5,7 +5,7 @@
 
 namespace babydb {
 
-// Configuration constants
+// add constants
 static constexpr size_t NUM_PARTITIONS = 8;
 static constexpr idx_t SMALL_TABLE_THRESHOLD = 100;
 static constexpr idx_t LARGE_TABLE_THRESHOLD = 10000;
@@ -52,7 +52,7 @@ void HashJoinOperator::BuildHashTable() {
     Chunk build_chunk;
     const idx_t build_key_attr = build_child_operator->GetOutputSchema().GetKeyAttrs({build_column_name_})[0];
     
-    // Build phase - collect all tuples from build side
+    // collect all the tuples from build side
     while (state != EXHAUSETED) {
         state = build_child_operator->Next(build_chunk);
         for (auto &chunk_row : build_chunk) {
@@ -62,22 +62,22 @@ void HashJoinOperator::BuildHashTable() {
         }
     }
     
-    // Determine optimal partitioning strategy
+    // want to determine optimization partitioning strat
     use_partitioning_ = tuple_count_ > LARGE_TABLE_THRESHOLD;
     use_batching_ = tuple_count_ > SMALL_TABLE_THRESHOLD;
     
     if (use_partitioning_) {
-        // Reserve space for partitioned tables
+        // space for partitioned tables
         size_t partition_size = (tuple_count_ / NUM_PARTITIONS) * 1.5;
         for (auto &table : partitioned_pointer_tables_) {
             table.reserve(partition_size);
         }
     } else {
-        // Reserve space for single table
+        // space for single table
         pointer_table_.reserve(tuple_count_ * 1.5);
     }
     
-    // Build hash table(s)
+    // build
     for (idx_t i = 0; i < tuple_count_; i++) {
         idx_t pos = i * width_;
         auto &key = tuples_[pos + build_key_attr];
@@ -102,7 +102,7 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
     auto &probe_child_operator = child_operators_[0];
     auto probe_key_attr = probe_child_operator->GetOutputSchema().GetKeyAttrs({probe_column_name_})[0];
     
-    // Determine optimal batch size dynamically
+    // determine the optimal batch size dynamically
     const idx_t batch_size = use_batching_ ? 
         std::min(BASE_BATCH_SIZE, exec_ctx_.config_.CHUNK_SUGGEST_SIZE - output_size) : 1;
     
@@ -120,9 +120,9 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
             return EXHAUSETED;
         }
 
-        // Process tuples (with or without batching)
+        // process the tuples using batching or not depending
         if (use_batching_) {
-            // Process in batches for better cache utilization
+            // process in batches for better cache utilization
             idx_t batch_count = 0;
             while (batch_count < batch_size && buffer_ptr_ < buffer_.size()) {
                 auto &probe_tuple = buffer_[buffer_ptr_].first;
@@ -141,7 +141,7 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
                 batch_count++;
             }
         } else {
-            // Process single tuple (optimized for small tables)
+            // process a single tuple
             auto &probe_tuple = buffer_[buffer_ptr_].first;
             auto key = probe_tuple.KeyFromTuple(probe_key_attr);
             auto match_range = pointer_table_.equal_range(key);
